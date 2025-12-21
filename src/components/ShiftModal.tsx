@@ -11,7 +11,6 @@ interface ShiftModalProps {
   initialShift?: Shift;
   date: string;
   userId: string;
-  userName?: string;
 }
 
 export default function ShiftModal({
@@ -24,7 +23,6 @@ export default function ShiftModal({
   initialShift,
   date,
   userId,
-  userName,
 }: ShiftModalProps) {
   const [templateId, setTemplateId] = useState('');
   const [startTime, setStartTime] = useState('');

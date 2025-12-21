@@ -304,7 +304,6 @@ export default function Schedule() {
         initialShift={selectedShift}
         date={selectedDate}
         userId={selectedUserId}
-        userName={profiles.find(p => p.id === selectedUserId)?.name || ''}
       />
     </div>
   );

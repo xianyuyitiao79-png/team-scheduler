@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Shift } from '../types';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ShieldCheck } from 'lucide-react';
+import { CalendarDays, ShieldCheck, UserCog } from 'lucide-react';
 
 export default function Dashboard() {
   const { profile } = useAuth();
@@ -47,6 +47,24 @@ export default function Dashboard() {
         window.location.reload();
     } else {
         alert('Failed to fix permissions: ' + error.message);
+    }
+  };
+
+  const updateName = async () => {
+    if (!profile) return;
+    const newName = window.prompt('Enter your new display name:', profile.name);
+    if (newName && newName !== profile.name) {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ name: newName })
+            .eq('id', profile.id);
+        
+        if (!error) {
+            alert('Name updated successfully!');
+            window.location.reload();
+        } else {
+            alert('Failed to update name: ' + error.message);
+        }
     }
   };
 
@@ -95,6 +113,14 @@ export default function Dashboard() {
               <span className="font-medium text-zinc-700">View Full Schedule</span>
               <CalendarDays size={20} className="text-zinc-400" />
             </Link>
+
+            <button
+                onClick={updateName}
+                className="w-full flex items-center justify-between p-3 rounded-md bg-zinc-50 hover:bg-zinc-100 transition-colors border border-zinc-200 text-left"
+            >
+                <span className="font-medium text-zinc-700">Update Profile Name</span>
+                <UserCog size={20} className="text-zinc-400" />
+            </button>
             
             {profile?.role !== 'admin' && (
                 <button
