@@ -72,14 +72,19 @@ export default function Schedule() {
   };
 
   const handleSaveShift = async (shiftData: Partial<Shift>) => {
+    const payload = {
+        template_id: shiftData.template_id,
+        user_id: shiftData.user_id,
+        start_time: shiftData.start_time,
+        end_time: shiftData.end_time,
+        note: shiftData.note
+    };
+
     if (shiftData.id) {
       // Update
       const { error } = await supabase
         .from('shifts')
-        .update({ 
-            template_id: shiftData.template_id, 
-            note: shiftData.note 
-        })
+        .update(payload)
         .eq('id', shiftData.id);
       
       if (!error) fetchData();
@@ -91,6 +96,8 @@ export default function Schedule() {
           date: shiftData.date,
           user_id: shiftData.user_id,
           template_id: shiftData.template_id,
+          start_time: shiftData.start_time,
+          end_time: shiftData.end_time,
           note: shiftData.note,
           status: 'draft' // Default to draft
         }]);
@@ -261,9 +268,9 @@ export default function Schedule() {
                         } ${isAdmin ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}
                       >
                         <div className="font-bold">
-                          {shift.shift_templates?.start_time.slice(0, 5)} - {shift.shift_templates?.end_time.slice(0, 5)}
+                          {(shift.start_time || shift.shift_templates?.start_time || '').slice(0, 5)} - {(shift.end_time || shift.shift_templates?.end_time || '').slice(0, 5)}
                         </div>
-                        <div className="truncate">{shift.shift_templates?.name}</div>
+                        <div className="truncate">{shift.shift_templates?.name || 'Custom'}</div>
                         {shift.status === 'draft' && <div className="text-[10px] uppercase mt-1 text-amber-600 font-bold">Draft</div>}
                       </div>
                     ))}
@@ -293,6 +300,7 @@ export default function Schedule() {
         onSave={handleSaveShift}
         onDelete={handleDeleteShift}
         templates={templates}
+        profiles={profiles}
         initialShift={selectedShift}
         date={selectedDate}
         userId={selectedUserId}

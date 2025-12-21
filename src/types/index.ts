@@ -20,6 +20,8 @@ export interface Shift {
   date: string; // YYYY-MM-DD
   template_id?: string;
   user_id: string;
+  start_time?: string; // HH:MM:SS
+  end_time?: string; // HH:MM:SS
   status: 'draft' | 'published';
   note?: string;
   // Joins

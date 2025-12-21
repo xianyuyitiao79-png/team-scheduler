@@ -12,7 +12,7 @@ drop function if exists public.handle_new_user() cascade;
 create table public.profiles (
   id uuid references auth.users not null primary key,
   name text not null,
-  role text not null check (role in ('admin', 'member')) default 'member',
+  role text not null check (role in ('admin', 'member')) default 'admin',
   active boolean default true,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -32,7 +32,9 @@ create table public.shifts (
   id uuid default uuid_generate_v4() primary key,
   date date not null,
   template_id uuid references public.shift_templates(id),
-  user_id uuid references public.profiles(id) not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  start_time time,
+  end_time time,
   status text not null check (status in ('draft', 'published')) default 'draft',
   note text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null

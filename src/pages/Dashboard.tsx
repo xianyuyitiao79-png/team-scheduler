@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Shift } from '../types';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, ShieldCheck } from 'lucide-react';
 
 export default function Dashboard() {
   const { profile } = useAuth();
@@ -34,6 +34,21 @@ export default function Dashboard() {
 
     fetchNextShift();
   }, [profile]);
+
+  const fixPermissions = async () => {
+    if (!profile) return;
+    const { error } = await supabase
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', profile.id);
+    
+    if (!error) {
+        alert('Permissions fixed! Reloading...');
+        window.location.reload();
+    } else {
+        alert('Failed to fix permissions: ' + error.message);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -80,6 +95,16 @@ export default function Dashboard() {
               <span className="font-medium text-zinc-700">View Full Schedule</span>
               <CalendarDays size={20} className="text-zinc-400" />
             </Link>
+            
+            {profile?.role !== 'admin' && (
+                <button
+                    onClick={fixPermissions}
+                    className="w-full flex items-center justify-between p-3 rounded-md bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200 text-left"
+                >
+                    <span className="font-medium text-amber-900">Fix Admin Permissions</span>
+                    <ShieldCheck size={20} className="text-amber-600" />
+                </button>
+            )}
           </div>
         </div>
       </div>
