@@ -18,13 +18,11 @@ export default function ShiftModal({
   onClose,
   onSave,
   onDelete,
-  templates,
   profiles,
   initialShift,
   date,
   userId,
 }: ShiftModalProps) {
-  const [templateId, setTemplateId] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [currentUserId, setCurrentUserId] = useState(userId);
@@ -33,7 +31,6 @@ export default function ShiftModal({
   useEffect(() => {
     if (isOpen) {
         if (initialShift) {
-            setTemplateId(initialShift.template_id || '');
             // Prioritize direct start_time if available, else template time
             if (initialShift.start_time) {
                 setStartTime(initialShift.start_time);
@@ -54,7 +51,6 @@ export default function ShiftModal({
             setCurrentUserId(initialShift.user_id || userId);
             setNote(initialShift.note || '');
         } else {
-            setTemplateId('');
             setStartTime('');
             setEndTime('');
             setCurrentUserId(userId);
@@ -63,23 +59,13 @@ export default function ShiftModal({
     }
   }, [initialShift, isOpen, userId]);
 
-  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const tid = e.target.value;
-    setTemplateId(tid);
-    const tmpl = templates.find(t => t.id === tid);
-    if (tmpl) {
-      setStartTime(tmpl.start_time);
-      setEndTime(tmpl.end_time);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       id: initialShift?.id,
       date,
       user_id: currentUserId,
-      template_id: templateId || undefined,
+      template_id: undefined,
       start_time: startTime,
       end_time: endTime,
       note,
@@ -111,22 +97,6 @@ export default function ShiftModal({
                 {profiles.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-zinc-700">Template (Optional)</label>
-            <select
-              value={templateId}
-              onChange={handleTemplateChange}
-              className="mt-1 block w-full px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:outline-none focus:ring-zinc-500 focus:border-zinc-500 sm:text-sm"
-            >
-              <option value="">Custom Time</option>
-              {templates.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.start_time.slice(0, 5)} - {t.end_time.slice(0, 5)})
-                </option>
-              ))}
             </select>
           </div>
 
