@@ -1,6 +1,13 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
+-- CLEANUP (CAREFUL: This deletes all data!)
+drop table if exists public.shifts cascade;
+drop table if exists public.shift_templates cascade;
+drop table if exists public.profiles cascade;
+drop table if exists public.settings cascade;
+drop function if exists public.handle_new_user() cascade;
+
 -- PROFILES
 create table public.profiles (
   id uuid references auth.users not null primary key,
