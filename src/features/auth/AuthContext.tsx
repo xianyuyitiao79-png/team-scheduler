@@ -9,7 +9,8 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  signInWithEmail: (email: string) => Promise<{ error: any }>;
+  signInWithEmail: (email: string, password?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password?: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   signInWithEmail: async () => ({ error: null }),
+  signUp: async () => ({ error: null }),
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -84,10 +86,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
-  const signInWithEmail = async (email: string) => {
-    // Magic link login as requested "Supabase Email Login" 
-    // Usually "Email Login" means Magic Link or Password. 
-    // Simple & Secure -> Magic Link.
+  const signInWithEmail = async (email: string, password?: string) => {
+    // If password provided, use password login
+    if (password) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    }
+    
+    // Otherwise fall back to Magic Link
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -97,8 +106,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const signUp = async (email: string, password?: string) => {
+    if (!password) {
+      // Magic link sign up is same as sign in
+      return signInWithEmail(email);
+    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signOut, signInWithEmail }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signOut, signInWithEmail, signUp }}>
       {children}
     </AuthContext.Provider>
   );
