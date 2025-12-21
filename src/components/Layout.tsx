@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { supabase } from '../lib/supabase';
 import { 
   LayoutDashboard, 
   CalendarDays, 
@@ -15,6 +16,24 @@ import { cn } from '../lib/utils';
 export default function Layout() {
   const { profile, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const updateName = async () => {
+    if (!profile) return;
+    const newName = window.prompt('Enter your new display name:', profile.name);
+    if (newName && newName !== profile.name) {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ name: newName })
+            .eq('id', profile.id);
+        
+        if (!error) {
+            alert('Name updated successfully!');
+            window.location.reload();
+        } else {
+            alert('Failed to update name: ' + error.message);
+        }
+    }
+  };
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, adminOnly: false },
@@ -68,7 +87,11 @@ export default function Layout() {
         </div>
 
         <div className="p-4 border-t border-zinc-200">
-          <div className="flex items-center mb-4">
+          <div 
+            className="flex items-center mb-4 cursor-pointer hover:bg-zinc-50 p-2 rounded-md transition-colors -mx-2"
+            onClick={updateName}
+            title="Click to update name"
+          >
             <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-600 font-bold">
               {profile?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
