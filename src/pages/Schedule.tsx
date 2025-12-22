@@ -14,6 +14,20 @@ import { ChevronLeft, ChevronRight, Download, Share, Plus } from 'lucide-react';
 import ShiftModal from '../components/ShiftModal';
 import html2canvas from 'html2canvas';
 
+interface OperatingHour {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_closed: boolean;
+}
+
+interface SpecialOperatingHour {
+  specific_date: string;
+  start_time: string;
+  end_time: string;
+  is_closed: boolean;
+}
+
 // Helper to get consistent color for a name
 const getColorForName = (name: string) => {
   const colors = [
@@ -50,6 +64,8 @@ export default function Schedule() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+  const [operatingHours, setOperatingHours] = useState<Map<number, OperatingHour>>(new Map());
+  const [specialHours, setSpecialHours] = useState<Map<string, SpecialOperatingHour>>(new Map());
   const [loading, setLoading] = useState(true);
   const [onlyMyShifts, setOnlyMyShifts] = useState(false);
   
@@ -98,6 +114,28 @@ export default function Schedule() {
       .lte('date', endDate);
 
     if (shiftsData) setShifts(shiftsData as unknown as Shift[]);
+
+    // Fetch Operating Hours
+    const { data: opHoursData } = await supabase.from('operating_hours').select('*');
+    if (opHoursData) {
+      const map = new Map<number, OperatingHour>();
+      opHoursData.forEach((h: any) => map.set(h.day_of_week, h));
+      setOperatingHours(map);
+    }
+
+    // Fetch Special Hours
+    const { data: specialHoursData } = await supabase
+      .from('special_operating_hours')
+      .select('*')
+      .gte('specific_date', startDate)
+      .lte('specific_date', endDate);
+      
+    if (specialHoursData) {
+      const map = new Map<string, SpecialOperatingHour>();
+      specialHoursData.forEach((h: any) => map.set(h.specific_date, h));
+      setSpecialHours(map);
+    }
+
     setLoading(false);
   };
 
@@ -212,6 +250,40 @@ export default function Schedule() {
     });
   };
 
+  const isBusinessHour = (date: Date, timeStr: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const dayOfWeek = date.getDay();
+    const [slotHour, slotMinute] = timeStr.split(':').map(Number);
+    const slotTime = slotHour * 60 + slotMinute;
+
+    let startStr = '10:00';
+    let endStr = '18:00';
+    let isClosed = false;
+
+    if (specialHours.has(dateStr)) {
+      const sh = specialHours.get(dateStr)!;
+      startStr = sh.start_time;
+      endStr = sh.end_time;
+      isClosed = sh.is_closed;
+    } else if (operatingHours.has(dayOfWeek)) {
+      const oh = operatingHours.get(dayOfWeek)!;
+      startStr = oh.start_time;
+      endStr = oh.end_time;
+      isClosed = oh.is_closed;
+    }
+
+    if (isClosed) return false;
+
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+    const startTime = startH * 60 + startM;
+    const endTime = endH * 60 + endM;
+
+    // Check if the slot (which is 1 hour long) overlaps with business hours
+    // Simplified: check if the slot start time is within business hours
+    return slotTime >= startTime && slotTime < endTime;
+  };
+
   if (loading) return <div>Loading schedule...</div>;
 
   return (
@@ -296,11 +368,14 @@ export default function Schedule() {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const cellShifts = getShiftsForCell(day, timeStr);
                 const hasShifts = cellShifts.length > 0;
+                const isBizHour = isBusinessHour(day, timeStr);
 
                 return (
                   <div 
                     key={`${dateStr}-${timeStr}`} 
                     className={`p-1 border-r border-zinc-200 last:border-0 min-h-[70px] relative group transition-all ${
+                      isBizHour ? 'bg-blue-50/40' : ''
+                    } ${
                       isAdmin ? 'cursor-pointer hover:bg-zinc-100/80' : ''
                     }`}
                     onClick={() => {
