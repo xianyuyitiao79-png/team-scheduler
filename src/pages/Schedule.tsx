@@ -10,10 +10,8 @@ import {
 import { useAuth } from '../features/auth/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Profile, Shift, ShiftTemplate } from '../types';
-import { ChevronLeft, ChevronRight, Download, Share, AlertCircle, LayoutList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Share } from 'lucide-react';
 import ShiftModal from '../components/ShiftModal';
-import OpenShiftsPanel from '../components/OpenShiftsPanel';
-import { computeOpenShifts, ShiftTemplateInput, ScheduledShiftInput } from '../lib/computeOpenShifts';
 import html2canvas from 'html2canvas';
 
 export default function Schedule() {
@@ -24,7 +22,6 @@ export default function Schedule() {
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlyMyShifts, setOnlyMyShifts] = useState(false);
-  const [showOpenShifts, setShowOpenShifts] = useState(false);
   
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,50 +37,6 @@ export default function Schedule() {
   });
 
   const isAdmin = profile?.role === 'admin';
-
-  const openShifts = useMemo(() => {
-    if (loading || !templates.length) return [];
-
-    const shiftInputs: ScheduledShiftInput[] = shifts.map(s => {
-      // Determine start and end times strings (HH:mm or HH:mm:ss)
-      let sTime = s.start_time || s.shift_templates?.start_time || '00:00';
-      let eTime = s.end_time || s.shift_templates?.end_time || '00:00';
-      
-      // Ensure we have HH:mm format at least
-      if (sTime.length > 5) sTime = sTime.slice(0, 5);
-      if (eTime.length > 5) eTime = eTime.slice(0, 5);
-
-      // Parse dates
-      // s.date is YYYY-MM-DD
-      const startDateTime = new Date(`${s.date}T${sTime}:00`);
-      const endDateTime = new Date(`${s.date}T${eTime}:00`);
-      
-      // Handle case where end time is smaller than start time (overnight)
-      // If needed. But user said "daily", assuming shifts are within day or handled simply.
-      
-      return {
-        id: s.id,
-        userId: s.user_id,
-        date: s.date,
-        startDateTime,
-        endDateTime
-      };
-    });
-
-    const templateInputs: ShiftTemplateInput[] = templates.map(t => ({
-      id: t.id,
-      name: t.name,
-      startTime: t.start_time.slice(0, 5),
-      endTime: t.end_time.slice(0, 5),
-      appliesToDays: [0, 1, 2, 3, 4, 5, 6],
-      active: true
-    }));
-
-    const weekStart = currentWeekStart;
-    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
-
-    return computeOpenShifts(templateInputs, shiftInputs, { start: weekStart, end: weekEnd });
-  }, [shifts, templates, currentWeekStart, loading]);
 
   useEffect(() => {
     fetchData();
@@ -191,9 +144,43 @@ export default function Schedule() {
   };
 
 
-  const displayedProfiles = onlyMyShifts 
-    ? profiles.filter(p => p.id === profile?.id) 
-    : profiles;
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let i = 9; i <= 21; i++) {
+      slots.push(`${i.toString().padStart(2, '0')}:00`);
+    }
+    return slots;
+  }, []);
+
+  const getShiftsForCell = (date: Date, timeStr: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const [hourStr] = timeStr.split(':');
+    const slotStartHour = parseInt(hourStr, 10);
+    
+    return shifts.filter(shift => {
+      if (shift.date !== dateStr) return false;
+      if (onlyMyShifts && shift.user_id !== profile?.id) return false;
+
+      // Parse shift times
+      const startTime = shift.start_time || shift.shift_templates?.start_time;
+      const endTime = shift.end_time || shift.shift_templates?.end_time;
+      
+      if (!startTime || !endTime) return false;
+
+      const [sH, sM] = startTime.split(':').map(Number);
+      const [eH, eM] = endTime.split(':').map(Number);
+
+      // Convert everything to minutes from midnight for easier comparison
+      const shiftStart = sH * 60 + sM;
+      const shiftEnd = eH * 60 + eM;
+      const slotStart = slotStartHour * 60;
+      const slotEnd = (slotStartHour + 1) * 60; // 1 hour slot
+
+      // Check overlap
+      // Shift overlaps slot if: ShiftStart < SlotEnd AND ShiftEnd > SlotStart
+      return shiftStart < slotEnd && shiftEnd > slotStart;
+    });
+  };
 
   if (loading) return <div>Loading schedule...</div>;
 
@@ -230,18 +217,6 @@ export default function Schedule() {
           >
             {onlyMyShifts ? 'Show All' : 'My Shifts'}
           </button>
-
-          <button
-            onClick={() => setShowOpenShifts(!showOpenShifts)}
-            className={`px-3 py-2 text-sm font-medium rounded-md border flex items-center ${
-              showOpenShifts 
-                ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'
-            }`}
-          >
-            <LayoutList size={16} className="mr-2" />
-            Open Shifts
-          </button>
         </div>
 
         {isAdmin && (
@@ -264,79 +239,83 @@ export default function Schedule() {
         )}
       </div>
 
-      {/* Schedule Grid */}
+      {/* Time Grid Schedule */}
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-x-auto" ref={scheduleRef}>
         <div className="min-w-[800px]">
           {/* Header Row */}
-          <div className="grid grid-cols-8 border-b border-zinc-200 bg-zinc-50">
-            <div className="p-4 font-medium text-zinc-500 text-sm">Team Member</div>
+          <div className="grid grid-cols-8 border-b border-zinc-200 bg-zinc-50 sticky top-0 z-10">
+            <div className="p-4 font-medium text-zinc-500 text-sm border-r border-zinc-200">Time</div>
             {weekDays.map(day => (
-              <div key={day.toString()} className="p-4 text-center border-l border-zinc-200">
+              <div key={day.toString()} className="p-4 text-center border-r border-zinc-200 last:border-0">
                 <div className="text-xs text-zinc-500 uppercase">{format(day, 'EEE')}</div>
                 <div className="font-bold text-zinc-900">{format(day, 'd')}</div>
               </div>
             ))}
           </div>
 
-          {/* User Rows */}
-          {displayedProfiles.map(user => (
-            <div key={user.id} className="grid grid-cols-8 border-b border-zinc-200 last:border-0">
-              {/* User Name Cell */}
-              <div className="p-4 flex items-center">
-                <div className="h-8 w-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold mr-3">
-                  {user.name?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="text-sm font-medium text-zinc-900 truncate">{user.name}</div>
+          {/* Time Rows */}
+          {timeSlots.map(timeStr => (
+            <div key={timeStr} className="grid grid-cols-8 border-b border-zinc-200 last:border-0 hover:bg-zinc-50 transition-colors">
+              {/* Time Label */}
+              <div className="p-4 text-sm font-medium text-zinc-500 border-r border-zinc-200 flex items-center justify-center bg-zinc-50/50">
+                {timeStr}
               </div>
 
               {/* Day Cells */}
               {weekDays.map(day => {
                 const dateStr = format(day, 'yyyy-MM-dd');
-                const userShifts = shifts.filter(s => s.user_id === user.id && s.date === dateStr);
-                const isConflict = userShifts.length > 1;
+                const cellShifts = getShiftsForCell(day, timeStr);
+                const hasShifts = cellShifts.length > 0;
 
                 return (
                   <div 
-                    key={dateStr} 
-                    className={`p-2 border-l border-zinc-200 min-h-[80px] relative group ${isAdmin ? 'cursor-pointer hover:bg-zinc-50' : ''}`}
+                    key={`${dateStr}-${timeStr}`} 
+                    className={`p-2 border-r border-zinc-200 last:border-0 min-h-[60px] relative group transition-colors ${
+                      hasShifts ? 'bg-blue-50/30' : ''
+                    } ${isAdmin ? 'cursor-pointer hover:bg-zinc-100' : ''}`}
                     onClick={() => {
                       if (isAdmin) {
                         setSelectedDate(dateStr);
-                        setSelectedUserId(user.id);
-                        setSelectedShift(undefined); // Default to add
+                        setSelectedUserId(''); // No user pre-selected for time slot
+                        setSelectedShift(undefined);
+                        // Pre-fill time based on slot?
                         setModalOpen(true);
                       }
                     }}
                   >
-                    {userShifts.map(shift => (
-                      <div
-                        key={shift.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isAdmin) {
-                            setSelectedDate(dateStr);
-                            setSelectedUserId(user.id);
-                            setSelectedShift(shift);
-                            setModalOpen(true);
-                          }
-                        }}
-                        className={`mb-1 p-2 rounded text-xs border ${
-                          shift.status === 'published' 
-                            ? 'bg-blue-50 border-blue-200 text-blue-800' 
-                            : 'bg-amber-50 border-amber-200 text-amber-800'
-                        } ${isAdmin ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}
-                      >
-                        <div className="font-bold">
-                          {(shift.start_time || shift.shift_templates?.start_time || '').slice(0, 5)} - {(shift.end_time || shift.shift_templates?.end_time || '').slice(0, 5)}
-                        </div>
-                        <div className="truncate">{shift.shift_templates?.name || 'Custom'}</div>
-                        {shift.status === 'draft' && <div className="text-[10px] uppercase mt-1 text-amber-600 font-bold">Draft</div>}
-                      </div>
-                    ))}
-                    
-                    {isConflict && (
-                      <div className="absolute top-1 right-1 text-red-500" title="Conflict: Multiple shifts">
-                        <AlertCircle size={14} />
+                    {!hasShifts ? (
+                       <div className="h-full w-full flex items-center justify-center">
+                         <span className="text-xs text-zinc-300 font-medium">Open</span>
+                       </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {cellShifts.map(shift => {
+                          const user = profiles.find(p => p.id === shift.user_id);
+                          const userName = user?.name || 'Unknown';
+                          
+                          return (
+                            <div
+                              key={shift.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isAdmin) {
+                                  setSelectedDate(dateStr);
+                                  setSelectedUserId(shift.user_id);
+                                  setSelectedShift(shift);
+                                  setModalOpen(true);
+                                }
+                              }}
+                              className={`px-2 py-1 rounded text-xs border shadow-sm cursor-pointer hover:scale-105 transition-transform ${
+                                shift.status === 'published' 
+                                  ? 'bg-blue-100 border-blue-200 text-blue-800' 
+                                  : 'bg-amber-100 border-amber-200 text-amber-800'
+                              }`}
+                              title={`${userName}: ${shift.start_time?.slice(0,5)} - ${shift.end_time?.slice(0,5)}`}
+                            >
+                              <span className="font-bold">{userName}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -344,12 +323,6 @@ export default function Schedule() {
               })}
             </div>
           ))}
-          
-          {displayedProfiles.length === 0 && (
-            <div className="p-8 text-center text-zinc-500">
-              No members found.
-            </div>
-          )}
         </div>
       </div>
 
@@ -363,12 +336,6 @@ export default function Schedule() {
         initialShift={selectedShift}
         date={selectedDate}
         userId={selectedUserId}
-      />
-      
-      <OpenShiftsPanel
-        isOpen={showOpenShifts}
-        onClose={() => setShowOpenShifts(false)}
-        openShifts={openShifts}
       />
     </div>
   );
