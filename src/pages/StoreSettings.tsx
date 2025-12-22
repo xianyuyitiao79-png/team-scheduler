@@ -27,6 +27,11 @@ export default function StoreSettings() {
       .select('*')
       .order('day_of_week');
     
+    if (error) {
+      console.error('Error fetching operating hours:', error);
+      return;
+    }
+
     if (data) {
       setHours(data);
     } else {
