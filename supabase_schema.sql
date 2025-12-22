@@ -97,9 +97,9 @@ create policy "Members can read own shifts"
   using ( auth.uid() = user_id );
 
 -- OPTIONAL: If you want members to see the whole team's PUBLISHED schedule, uncomment this:
--- create policy "Members can read all published shifts"
---   on public.shifts for select
---   using ( status = 'published' );
+create policy "Members can read all published shifts"
+  on public.shifts for select
+  using ( status = 'published' );
 
 -- Settings
 create policy "Everyone can read settings"

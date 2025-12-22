@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Profile, Shift } from '../types';
 import { Shield, User, Clock } from 'lucide-react';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 
 export default function Members() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -23,11 +24,18 @@ export default function Members() {
     
     if (profilesData) setProfiles(profilesData as Profile[]);
 
-    // Fetch All Shifts to calculate totals
-    // In a real app, you might want to filter by date range (e.g. this month)
+    // Fetch Shifts for Current Week to calculate totals
+    const today = new Date();
+    const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
+    const end = endOfWeek(today, { weekStartsOn: 1 });
+    const startStr = format(start, 'yyyy-MM-dd');
+    const endStr = format(end, 'yyyy-MM-dd');
+
     const { data: shiftsData } = await supabase
       .from('shifts')
-      .select('*, shift_templates(*)');
+      .select('*, shift_templates(*)')
+      .gte('date', startStr)
+      .lte('date', endStr);
 
     if (shiftsData) {
       const hoursMap: Record<string, number> = {};
@@ -105,7 +113,7 @@ export default function Members() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Total Hours</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Total Hours (This Week)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
             </tr>
