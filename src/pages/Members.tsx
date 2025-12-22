@@ -1,24 +1,67 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Profile } from '../types';
-import { Shield, User } from 'lucide-react';
+import { Profile, Shift } from '../types';
+import { Shield, User, Clock } from 'lucide-react';
 
 export default function Members() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [memberHours, setMemberHours] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProfiles();
+    fetchData();
   }, []);
 
-  const fetchProfiles = async () => {
-    const { data } = await supabase
+  const fetchData = async () => {
+    setLoading(true);
+    
+    // Fetch Profiles
+    const { data: profilesData } = await supabase
       .from('profiles')
       .select('*')
       .order('name');
     
-    if (data) setProfiles(data as Profile[]);
+    if (profilesData) setProfiles(profilesData as Profile[]);
+
+    // Fetch All Shifts to calculate totals
+    // In a real app, you might want to filter by date range (e.g. this month)
+    const { data: shiftsData } = await supabase
+      .from('shifts')
+      .select('*, shift_templates(*)');
+
+    if (shiftsData) {
+      const hoursMap: Record<string, number> = {};
+      
+      (shiftsData as unknown as Shift[]).forEach(shift => {
+        const userId = shift.user_id;
+        if (!userId) return;
+
+        // Determine start and end times
+        const startTime = shift.start_time || shift.shift_templates?.start_time;
+        const endTime = shift.end_time || shift.shift_templates?.end_time;
+
+        if (startTime && endTime) {
+          const start = timeToMinutes(startTime);
+          const end = timeToMinutes(endTime);
+          
+          // Handle duration
+          let duration = end - start;
+          if (duration < 0) duration += 24 * 60; // Handle overnight crossing midnight if any
+          
+          const hours = duration / 60;
+          
+          hoursMap[userId] = (hoursMap[userId] || 0) + hours;
+        }
+      });
+      setMemberHours(hoursMap);
+    }
+
     setLoading(false);
+  };
+
+  const timeToMinutes = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
   };
 
   const toggleRole = async (profile: Profile) => {
@@ -62,6 +105,7 @@ export default function Members() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Total Hours</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -84,6 +128,14 @@ export default function Members() {
                     {profile.role === 'admin' ? <Shield size={12} className="mr-1" /> : <User size={12} className="mr-1" />}
                     {profile.role}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center text-sm text-zinc-900">
+                    <Clock size={16} className="mr-1.5 text-zinc-400" />
+                    <span className="font-medium">
+                      {Math.round((memberHours[profile.id] || 0) * 10) / 10}h
+                    </span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
