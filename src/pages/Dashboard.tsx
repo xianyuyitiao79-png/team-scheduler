@@ -13,6 +13,13 @@ interface OperatingHour {
   is_closed: boolean;
 }
 
+interface SpecialOperatingHour {
+  specific_date: string;
+  start_time: string;
+  end_time: string;
+  is_closed: boolean;
+}
+
 interface OpenSlot {
   date: Date;
   slots: { start: string; end: string }[];
@@ -57,6 +64,18 @@ export default function Dashboard() {
         opHoursData.forEach((h: OperatingHour) => opHoursMap.set(h.day_of_week, h));
       }
 
+      // 2b. Fetch Special Operating Hours
+      const { data: specialHoursData } = await supabase
+        .from('special_operating_hours')
+        .select('*')
+        .gte('specific_date', todayStr)
+        .lte('specific_date', twoWeeksLaterStr);
+
+      const specialHoursMap = new Map<string, SpecialOperatingHour>();
+      if (specialHoursData) {
+        specialHoursData.forEach((h: SpecialOperatingHour) => specialHoursMap.set(h.specific_date, h));
+      }
+
       // 3. Fetch All Shifts for next 2 weeks to calculate open slots
       const { data: allShiftsData } = await supabase
         .from('shifts')
@@ -73,9 +92,26 @@ export default function Dashboard() {
       days.forEach(day => {
         const dayOfWeek = day.getDay();
         const dateStr = format(day, 'yyyy-MM-dd');
+        
+        // Determine effective operating hours
+        let startStr = '10:00';
+        let endStr = '18:00';
+        let isClosed = false;
+
+        const specialHour = specialHoursMap.get(dateStr);
         const opHour = opHoursMap.get(dayOfWeek);
 
-        if (!opHour || opHour.is_closed) return;
+        if (specialHour) {
+            startStr = specialHour.start_time;
+            endStr = specialHour.end_time;
+            isClosed = specialHour.is_closed;
+        } else if (opHour) {
+            startStr = opHour.start_time;
+            endStr = opHour.end_time;
+            isClosed = opHour.is_closed;
+        }
+
+        if (isClosed) return;
 
         // Get shifts for this day
         const dayShifts = allShifts.filter(s => s.date === dateStr);
@@ -85,8 +121,8 @@ export default function Dashboard() {
         // For simplicity in this version (as per user request style), we just check occupied vs total range.
         // A more complex interval subtraction algorithm:
         
-        const storeStart = parseInt(opHour.start_time.split(':')[0]) * 60 + parseInt(opHour.start_time.split(':')[1]);
-        const storeEnd = parseInt(opHour.end_time.split(':')[0]) * 60 + parseInt(opHour.end_time.split(':')[1]);
+        const storeStart = parseInt(startStr.split(':')[0]) * 60 + parseInt(startStr.split(':')[1]);
+        const storeEnd = parseInt(endStr.split(':')[0]) * 60 + parseInt(endStr.split(':')[1]);
         
         // Flatten shifts into occupied intervals
         let occupied = dayShifts.map(s => {

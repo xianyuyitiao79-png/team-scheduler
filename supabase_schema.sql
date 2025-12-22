@@ -121,15 +121,16 @@ create table public.operating_hours (
 );
 
 -- Insert default operating hours (Mon-Sun)
+-- UPDATED DEFAULT TO 10:00 - 18:00 as requested
 insert into public.operating_hours (day_of_week, start_time, end_time)
 values 
-  (0, '09:00', '21:00'),
-  (1, '09:00', '21:00'),
-  (2, '09:00', '21:00'),
-  (3, '09:00', '21:00'),
-  (4, '09:00', '21:00'),
-  (5, '09:00', '21:00'),
-  (6, '09:00', '21:00')
+  (0, '10:00', '18:00'),
+  (1, '10:00', '18:00'),
+  (2, '10:00', '18:00'),
+  (3, '10:00', '18:00'),
+  (4, '10:00', '18:00'),
+  (5, '10:00', '18:00'),
+  (6, '10:00', '18:00')
 on conflict (day_of_week) do nothing;
 
 -- ENABLE RLS for operating_hours
@@ -144,6 +145,28 @@ create policy "Everyone can read operating hours"
 -- Admins can update
 create policy "Admins can update operating hours"
   on public.operating_hours for all
+  using ( auth.uid() in ( select id from public.profiles where role = 'admin' ) );
+
+-- SPECIAL OPERATING HOURS
+create table public.special_operating_hours (
+  id uuid default uuid_generate_v4() primary key,
+  specific_date date not null unique,
+  start_time text not null,
+  end_time text not null,
+  is_closed boolean default false,
+  reason text
+);
+
+-- ENABLE RLS for special_operating_hours
+alter table public.special_operating_hours enable row level security;
+
+-- POLICIES for special_operating_hours
+create policy "Everyone can read special operating hours"
+  on public.special_operating_hours for select
+  using ( true );
+
+create policy "Admins can manage special operating hours"
+  on public.special_operating_hours for all
   using ( auth.uid() in ( select id from public.profiles where role = 'admin' ) );
 
 -- TRIGGER to create profile on signup
