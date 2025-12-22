@@ -134,6 +134,46 @@ export default function StoreSettings() {
     }
   };
 
+  const handleSeedSpecialDays = async () => {
+    if (!confirm('This will add 2025 Holiday/Black Friday schedule. Continue?')) return;
+    setLoading(true);
+    
+    const seedData = [
+        // Black Friday
+        { specific_date: '2025-11-27', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Black Friday Event' },
+        { specific_date: '2025-11-28', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Black Friday' },
+        // Christmas Trading
+        { specific_date: '2025-12-19', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Christmas Trading' },
+        { specific_date: '2025-12-20', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Christmas Trading' },
+        { specific_date: '2025-12-21', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Christmas Trading' },
+        { specific_date: '2025-12-22', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Christmas Trading' },
+        { specific_date: '2025-12-23', start_time: '10:00', end_time: '21:00', is_closed: false, reason: 'Christmas Trading' },
+        { specific_date: '2025-12-24', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'Christmas Eve' },
+        { specific_date: '2025-12-25', start_time: '00:00', end_time: '00:00', is_closed: true, reason: 'Christmas Day (Restaurants Only)' },
+        { specific_date: '2025-12-26', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'Boxing Day' },
+        { specific_date: '2025-12-27', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'Holiday Trading' },
+        { specific_date: '2025-12-28', start_time: '10:00', end_time: '17:00', is_closed: false, reason: 'Holiday Trading' },
+        { specific_date: '2025-12-29', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'Holiday Trading' },
+        { specific_date: '2025-12-30', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'Holiday Trading' },
+        { specific_date: '2025-12-31', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'New Years Eve' },
+        // 2026
+        { specific_date: '2026-01-01', start_time: '00:00', end_time: '00:00', is_closed: true, reason: 'New Years Day (Restaurants Only)' },
+        { specific_date: '2026-01-02', start_time: '10:00', end_time: '19:00', is_closed: false, reason: 'Holiday Trading' },
+    ];
+
+    const { error } = await supabase
+        .from('special_operating_hours')
+        .upsert(seedData, { onConflict: 'specific_date' });
+
+    if (error) {
+        alert('Error seeding data: ' + error.message);
+    } else {
+        alert('Successfully added holiday dates!');
+        fetchData();
+    }
+    setLoading(false);
+  };
+
   if (loading) return <div>Loading settings...</div>;
 
   return (
@@ -205,8 +245,18 @@ export default function StoreSettings() {
 
       {/* Special Dates Section */}
       <div className="space-y-4 pt-6 border-t border-zinc-200">
-        <h2 className="text-xl font-bold text-zinc-900">Special Dates / Holidays</h2>
-        <p className="text-zinc-500">Override the weekly schedule for specific dates (e.g., Holidays, Events).</p>
+        <div className="flex items-center justify-between">
+            <div>
+                <h2 className="text-xl font-bold text-zinc-900">Special Dates / Holidays</h2>
+                <p className="text-zinc-500">Override the weekly schedule for specific dates (e.g., Holidays, Events).</p>
+            </div>
+            <button
+                onClick={handleSeedSpecialDays}
+                className="px-3 py-1.5 text-xs bg-zinc-100 text-zinc-600 rounded-md hover:bg-zinc-200 border border-zinc-200"
+            >
+                Auto-fill 2025 Holidays
+            </button>
+        </div>
 
         {/* List Existing Special Dates */}
         {specialHours.length > 0 && (
