@@ -66,3 +66,16 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #d4d4d8; /* zinc-300 */
+    border-radius: 20px;
+  }
+}

@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import Schedule from './pages/Schedule';
+import StoreSettings from './pages/StoreSettings';
 
 // Protected Route Wrapper
 const ProtectedRoute = () => {
@@ -37,6 +38,7 @@ function App() {
               
               <Route element={<AdminRoute />}>
                 <Route path="/members" element={<Members />} />
+                <Route path="/settings" element={<StoreSettings />} />
               </Route>
             </Route>
           </Route>

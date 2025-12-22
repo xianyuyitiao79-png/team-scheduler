@@ -110,6 +110,42 @@ create policy "Admins can update settings"
   on public.settings for update
   using ( auth.uid() in ( select id from public.profiles where role = 'admin' ) );
 
+-- OPERATING HOURS
+create table public.operating_hours (
+  id uuid default uuid_generate_v4() primary key,
+  day_of_week integer not null check (day_of_week between 0 and 6), -- 0=Sunday, 1=Monday...
+  start_time text not null default '09:00',
+  end_time text not null default '21:00',
+  is_closed boolean default false,
+  unique(day_of_week)
+);
+
+-- Insert default operating hours (Mon-Sun)
+insert into public.operating_hours (day_of_week, start_time, end_time)
+values 
+  (0, '09:00', '21:00'),
+  (1, '09:00', '21:00'),
+  (2, '09:00', '21:00'),
+  (3, '09:00', '21:00'),
+  (4, '09:00', '21:00'),
+  (5, '09:00', '21:00'),
+  (6, '09:00', '21:00')
+on conflict (day_of_week) do nothing;
+
+-- ENABLE RLS for operating_hours
+alter table public.operating_hours enable row level security;
+
+-- POLICIES for operating_hours
+-- Everyone can read
+create policy "Everyone can read operating hours"
+  on public.operating_hours for select
+  using ( true );
+
+-- Admins can update
+create policy "Admins can update operating hours"
+  on public.operating_hours for all
+  using ( auth.uid() in ( select id from public.profiles where role = 'admin' ) );
+
 -- TRIGGER to create profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
