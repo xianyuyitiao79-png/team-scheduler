@@ -69,9 +69,14 @@ export default function OpenShiftsPanel({ openShifts, isOpen, onClose }: OpenShi
                     {day.items.map((item, idx) => (
                       <div key={idx} className="p-3 bg-white hover:bg-zinc-50 transition-colors">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="text-sm font-semibold text-zinc-700">
-                            {item.templateName}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-zinc-700">
+                              {item.templateName}
+                            </span>
+                            <span className="text-xs text-zinc-400">
+                              Req: {item.templateStartTime} - {item.templateEndTime}
+                            </span>
+                          </div>
                           <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
                             {Math.round(item.minutes / 60 * 10) / 10}h
                           </span>

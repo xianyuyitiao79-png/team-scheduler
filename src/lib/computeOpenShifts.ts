@@ -28,6 +28,8 @@ export interface WeekRange {
 export interface OpenShiftItem {
   templateId: string;
   templateName: string;
+  templateStartTime: string; // HH:mm
+  templateEndTime: string;   // HH:mm
   startDateTime: Date;
   endDateTime: Date;
   minutes: number;
@@ -144,6 +146,8 @@ export function computeOpenShifts(
           dayItems.push({
             templateId: template.id,
             templateName: template.name,
+            templateStartTime: template.startTime,
+            templateEndTime: template.endTime,
             startDateTime: minutesToDate(pointer, currentDate),
             endDateTime: minutesToDate(interval.start, currentDate),
             minutes: interval.start - pointer,
@@ -158,6 +162,8 @@ export function computeOpenShifts(
         dayItems.push({
           templateId: template.id,
           templateName: template.name,
+          templateStartTime: template.startTime,
+          templateEndTime: template.endTime,
           startDateTime: minutesToDate(pointer, currentDate),
           endDateTime: minutesToDate(tEndMins, currentDate),
           minutes: tEndMins - pointer,
