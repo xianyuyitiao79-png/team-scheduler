@@ -160,8 +160,11 @@ export default function Dashboard() {
         let current = storeStart;
 
         for (const occ of mergedOccupied) {
-            if (current < occ.start) {
-                freeSlots.push({ start: current, end: occ.start });
+            // Ensure we don't go beyond storeEnd
+            const nextOccupiedStart = Math.min(occ.start, storeEnd);
+            
+            if (current < nextOccupiedStart) {
+                freeSlots.push({ start: current, end: nextOccupiedStart });
             }
             current = Math.max(current, occ.end);
         }
@@ -171,12 +174,19 @@ export default function Dashboard() {
         }
 
         // Convert back to string and filter small slots (e.g. < 30 mins)
-        const validSlots = freeSlots
+        let validSlots = freeSlots
             .filter(slot => slot.end - slot.start >= 30)
             .map(slot => ({
                 start: `${Math.floor(slot.start / 60).toString().padStart(2, '0')}:${(slot.start % 60).toString().padStart(2, '0')}`,
                 end: `${Math.floor(slot.end / 60).toString().padStart(2, '0')}:${(slot.end % 60).toString().padStart(2, '0')}`
             }));
+            
+        // Deduplicate slots to prevent visual glitches
+        validSlots = validSlots.filter((slot, index, self) =>
+            index === self.findIndex((t) => (
+                t.start === slot.start && t.end === slot.end
+            ))
+        );
 
         if (validSlots.length > 0) {
             computedOpenSlots.push({ date: day, slots: validSlots });

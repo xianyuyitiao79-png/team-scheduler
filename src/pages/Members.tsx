@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Profile, Shift } from '../types';
-import { Shield, User, Clock } from 'lucide-react';
+import { Shield, User, Clock, RefreshCw } from 'lucide-react';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 
 export default function Members() {
@@ -105,6 +105,13 @@ export default function Members() {
           <h1 className="text-2xl font-bold text-zinc-900">Members</h1>
           <p className="text-zinc-500">Manage your team members and permissions.</p>
         </div>
+        <button 
+          onClick={fetchData} 
+          className="flex items-center px-3 py-2 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50 shadow-sm"
+        >
+          <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh Hours
+        </button>
       </div>
 
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
