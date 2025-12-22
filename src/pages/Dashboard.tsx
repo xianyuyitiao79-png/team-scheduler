@@ -27,7 +27,7 @@ interface OpenSlot {
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const [nextShift, setNextShift] = useState<Shift | null>(null);
+  const [upcomingShifts, setUpcomingShifts] = useState<Shift[]>([]);
   const [openSlots, setOpenSlots] = useState<OpenSlot[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,21 +37,23 @@ export default function Dashboard() {
       
       const today = new Date();
       const todayStr = format(today, 'yyyy-MM-dd');
+      const nextWeek = addDays(today, 7);
+      const nextWeekStr = format(nextWeek, 'yyyy-MM-dd');
       const twoWeeksLater = addDays(today, 14);
       const twoWeeksLaterStr = format(twoWeeksLater, 'yyyy-MM-dd');
 
-      // 1. Fetch Next Shift
+      // 1. Fetch Upcoming Shifts (Next 7 Days)
       const { data: shiftData } = await supabase
         .from('shifts')
         .select('*, shift_templates(*)')
         .eq('user_id', profile.id)
         .gte('date', todayStr)
+        .lte('date', nextWeekStr)
         .eq('status', 'published')
-        .order('date', { ascending: true })
-        .limit(1);
+        .order('date', { ascending: true });
 
-      if (shiftData && shiftData.length > 0) {
-        setNextShift(shiftData[0] as unknown as Shift);
+      if (shiftData) {
+        setUpcomingShifts(shiftData as unknown as Shift[]);
       }
 
       // 2. Fetch Operating Hours
@@ -204,7 +206,7 @@ export default function Dashboard() {
             <div className="absolute top-0 left-0 w-1 h-full bg-zinc-900"></div>
             <div>
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-zinc-900">Next Shift</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900">Your Schedule (Next 7 Days)</h3>
                     <div className="p-2 bg-zinc-50 rounded-full group-hover:bg-zinc-100 transition-colors">
                         <CalendarDays className="text-zinc-500 group-hover:text-zinc-700" size={20} />
                     </div>
@@ -214,22 +216,28 @@ export default function Dashboard() {
                         <div className="h-8 bg-zinc-100 rounded w-3/4"></div>
                         <div className="h-6 bg-zinc-100 rounded w-1/2"></div>
                     </div>
-                ) : nextShift ? (
-                    <div className="space-y-1">
-                        <div className="text-3xl font-bold text-zinc-900 tracking-tight">
-                            {format(parseISO(nextShift.date), 'EEEE')}
-                        </div>
-                        <div className="text-xl text-zinc-600 font-medium">
-                            {format(parseISO(nextShift.date), 'MMM d')}
-                        </div>
-                        <div className="pt-4 text-2xl text-zinc-800 font-mono">
-                            {(nextShift.start_time || nextShift.shift_templates?.start_time)?.slice(0, 5)} - {(nextShift.end_time || nextShift.shift_templates?.end_time)?.slice(0, 5)}
-                        </div>
+                ) : upcomingShifts.length > 0 ? (
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {upcomingShifts.map((shift, idx) => (
+                            <div key={idx} className="flex justify-between items-center py-2 border-b border-zinc-50 last:border-0">
+                                <div>
+                                    <div className="font-bold text-zinc-900">
+                                        {format(parseISO(shift.date), 'EEEE')}
+                                    </div>
+                                    <div className="text-xs text-zinc-500 font-medium">
+                                        {format(parseISO(shift.date), 'MMM d')}
+                                    </div>
+                                </div>
+                                <div className="text-sm font-mono text-zinc-700 bg-zinc-50 px-2 py-1 rounded">
+                                    {(shift.start_time || shift.shift_templates?.start_time)?.slice(0, 5)} - {(shift.end_time || shift.shift_templates?.end_time)?.slice(0, 5)}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : (
                     <div className="text-zinc-500 py-6">
                         <p className="font-medium">No upcoming shifts</p>
-                        <p className="text-sm mt-1 text-zinc-400">You are free for now!</p>
+                        <p className="text-sm mt-1 text-zinc-400">You are free for the next week!</p>
                     </div>
                 )}
             </div>
