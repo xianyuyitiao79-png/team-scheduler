@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Profile, Shift } from '../types';
-import { Shield, User, Clock, RefreshCw } from 'lucide-react';
-import { startOfWeek, endOfWeek, format } from 'date-fns';
+import { Shield, User, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { startOfWeek, endOfWeek, format, addWeeks, subWeeks } from 'date-fns';
 
 export default function Members() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [memberHours, setMemberHours] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentDate]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -24,10 +25,9 @@ export default function Members() {
     
     if (profilesData) setProfiles(profilesData as Profile[]);
 
-    // Fetch Shifts for Current Week to calculate totals
-    const today = new Date();
-    const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
-    const end = endOfWeek(today, { weekStartsOn: 1 });
+    // Fetch Shifts for Selected Week to calculate totals
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
+    const end = endOfWeek(currentDate, { weekStartsOn: 1 });
     const startStr = format(start, 'yyyy-MM-dd');
     const endStr = format(end, 'yyyy-MM-dd');
 
@@ -47,6 +47,7 @@ export default function Members() {
         // Determine start and end times
         const startTime = shift.start_time || shift.shift_templates?.start_time;
         const endTime = shift.end_time || shift.shift_templates?.end_time;
+        const breakMinutes = shift.shift_templates?.break_minutes || 0;
 
         if (startTime && endTime) {
           const start = timeToMinutes(startTime);
@@ -55,6 +56,9 @@ export default function Members() {
           // Handle duration
           let duration = end - start;
           if (duration < 0) duration += 24 * 60; // Handle overnight crossing midnight if any
+          
+          // Subtract break time
+          duration = Math.max(0, duration - breakMinutes);
           
           const hours = duration / 60;
           
@@ -66,6 +70,9 @@ export default function Members() {
 
     setLoading(false);
   };
+
+  const handlePrevWeek = () => setCurrentDate(d => subWeeks(d, 1));
+  const handleNextWeek = () => setCurrentDate(d => addWeeks(d, 1));
 
   const timeToMinutes = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -100,18 +107,37 @@ export default function Members() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Members</h1>
           <p className="text-zinc-500">Manage your team members and permissions.</p>
         </div>
-        <button 
-          onClick={fetchData} 
-          className="flex items-center px-3 py-2 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50 shadow-sm"
-        >
-          <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Hours
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white border border-zinc-300 rounded-md shadow-sm">
+            <button 
+              onClick={handlePrevWeek}
+              className="p-2 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-l-md border-r border-zinc-200"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="px-4 py-2 text-sm font-medium text-zinc-900 min-w-[180px] text-center">
+              {format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'MMM d')} - {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'MMM d, yyyy')}
+            </div>
+            <button 
+              onClick={handleNextWeek}
+              className="p-2 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 rounded-r-md border-l border-zinc-200"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <button 
+            onClick={fetchData} 
+            className="flex items-center px-3 py-2 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50 shadow-sm"
+          >
+            <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
@@ -120,7 +146,9 @@ export default function Members() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Total Hours (This Week)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                Total Hours ({format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'MM/dd')} - {format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'MM/dd')})
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
             </tr>
