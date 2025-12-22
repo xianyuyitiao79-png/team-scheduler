@@ -73,28 +73,40 @@ export default function ShiftModal({
     }
   }, [initialShift, isOpen, userId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     
     // Save to history
-    if (startTime && endTime) {
-        const newTime = { start: startTime, end: endTime };
-        const updatedHistory = [newTime, ...historyTimes.filter(t => t.start !== startTime || t.end !== endTime)].slice(0, 5); // Keep last 5
-        setHistoryTimes(updatedHistory);
-        localStorage.setItem('shift_history_times', JSON.stringify(updatedHistory));
+    try {
+        if (startTime && endTime) {
+            const newTime = { start: startTime, end: endTime };
+            const updatedHistory = [newTime, ...historyTimes.filter(t => t.start !== startTime || t.end !== endTime)].slice(0, 5); // Keep last 5
+            setHistoryTimes(updatedHistory);
+            localStorage.setItem('shift_history_times', JSON.stringify(updatedHistory));
+        }
+    } catch (e) {
+        console.error('Failed to save history', e);
     }
 
-    onSave({
-      id: initialShift?.id,
-      date,
-      user_id: currentUserId,
-      template_id: undefined,
-      start_time: startTime,
-      end_time: endTime,
-      note,
-      status: initialShift?.status || 'draft'
-    });
-    onClose();
+    try {
+        await onSave({
+            id: initialShift?.id,
+            date,
+            user_id: currentUserId,
+            template_id: undefined,
+            start_time: startTime,
+            end_time: endTime,
+            note,
+            status: initialShift?.status || 'draft'
+        });
+        onClose();
+    } catch (error) {
+        console.error('Save failed', error);
+        // Error handling should be done in onSave or displayed here if onSave throws
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   if (!isOpen) return null;
