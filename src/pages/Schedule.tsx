@@ -390,12 +390,20 @@ export default function Schedule() {
                     className={`p-1 border-r border-zinc-200 last:border-0 min-h-[70px] relative group transition-all ${
                       isBizHour ? 'bg-blue-50/40' : ''
                     } ${
-                      isAdmin ? 'cursor-pointer hover:bg-zinc-100/80' : ''
+                      (isAdmin || !hasShifts) ? 'cursor-pointer hover:bg-zinc-100/80' : ''
                     }`}
                     onClick={() => {
-                      if (isAdmin) {
+                      // Allow anyone to click empty slots to add a shift
+                      if (!hasShifts) {
                         setSelectedDate(dateStr);
-                        setSelectedUserId(''); // No user pre-selected for time slot
+                        // If admin, empty userId (force select). If member, pre-select their id.
+                        setSelectedUserId(isAdmin ? '' : profile?.id || '');
+                        setSelectedShift(undefined);
+                        setModalOpen(true);
+                      } else if (isAdmin) {
+                        // Admin can click occupied slots (handled by inner click but good to have here too if needed)
+                        setSelectedDate(dateStr);
+                        setSelectedUserId(''); 
                         setSelectedShift(undefined);
                         setModalOpen(true);
                       }
@@ -420,15 +428,17 @@ export default function Schedule() {
                               key={shift.id}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (isAdmin) {
+                                if (isAdmin || shift.user_id === profile?.id) {
                                   setSelectedDate(dateStr);
                                   setSelectedUserId(shift.user_id);
                                   setSelectedShift(shift);
                                   setModalOpen(true);
                                 }
                               }}
-                              className={`px-2 py-1 rounded-md text-xs border shadow-sm cursor-pointer transition-all hover:shadow-md ${colorClass} ${
+                              className={`px-2 py-1 rounded-md text-xs border shadow-sm transition-all hover:shadow-md ${colorClass} ${
                                 shift.status === 'draft' ? 'opacity-80 border-dashed' : ''
+                              } ${
+                                (isAdmin || shift.user_id === profile?.id) ? 'cursor-pointer' : 'cursor-default'
                               }`}
                               title={`${userName}: ${shift.start_time?.slice(0,5)} - ${shift.end_time?.slice(0,5)}`}
                             >
@@ -456,6 +466,7 @@ export default function Schedule() {
         initialShift={selectedShift}
         date={selectedDate}
         userId={selectedUserId}
+        isAdmin={isAdmin}
       />
     </div>
   );
