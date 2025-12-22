@@ -5,7 +5,6 @@ import Login from './pages/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
-import Templates from './pages/Templates';
 import Schedule from './pages/Schedule';
 
 // Protected Route Wrapper
@@ -38,7 +37,6 @@ function App() {
               
               <Route element={<AdminRoute />}>
                 <Route path="/members" element={<Members />} />
-                <Route path="/templates" element={<Templates />} />
               </Route>
             </Route>
           </Route>

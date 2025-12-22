@@ -6,7 +6,6 @@ import {
   LayoutDashboard, 
   CalendarDays, 
   Users, 
-  Settings, 
   LogOut, 
   Menu, 
   X 
@@ -39,7 +38,6 @@ export default function Layout() {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, adminOnly: false },
     { name: 'Schedule', href: '/schedule', icon: CalendarDays, adminOnly: false },
     { name: 'Members', href: '/members', icon: Users, adminOnly: true },
-    { name: 'Templates', href: '/templates', icon: Settings, adminOnly: true },
   ];
 
   const filteredNav = navigation.filter(
