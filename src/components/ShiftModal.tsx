@@ -27,6 +27,19 @@ export default function ShiftModal({
   const [endTime, setEndTime] = useState('');
   const [currentUserId, setCurrentUserId] = useState(userId);
   const [note, setNote] = useState('');
+  const [historyTimes, setHistoryTimes] = useState<{start: string, end: string}[]>([]);
+
+  useEffect(() => {
+    // Load history from localStorage
+    try {
+        const stored = localStorage.getItem('shift_history_times');
+        if (stored) {
+            setHistoryTimes(JSON.parse(stored));
+        }
+    } catch (e) {
+        console.error('Failed to load shift history', e);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,6 +74,15 @@ export default function ShiftModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Save to history
+    if (startTime && endTime) {
+        const newTime = { start: startTime, end: endTime };
+        const updatedHistory = [newTime, ...historyTimes.filter(t => t.start !== startTime || t.end !== endTime)].slice(0, 5); // Keep last 5
+        setHistoryTimes(updatedHistory);
+        localStorage.setItem('shift_history_times', JSON.stringify(updatedHistory));
+    }
+
     onSave({
       id: initialShift?.id,
       date,
@@ -122,6 +144,28 @@ export default function ShiftModal({
                 />
             </div>
           </div>
+
+          {/* Recent History */}
+          {historyTimes.length > 0 && (
+            <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">Recent Times</label>
+                <div className="flex flex-wrap gap-2">
+                    {historyTimes.map((time, idx) => (
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                                setStartTime(time.start);
+                                setEndTime(time.end);
+                            }}
+                            className="px-3 py-1 text-xs bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-full border border-zinc-200 transition-colors"
+                        >
+                            {time.start} - {time.end}
+                        </button>
+                    ))}
+                </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-zinc-700">Note (Optional)</label>
