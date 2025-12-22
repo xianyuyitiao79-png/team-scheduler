@@ -140,37 +140,51 @@ export default function Schedule() {
   };
 
   const handleSaveShift = async (shiftData: Partial<Shift>) => {
-    const payload = {
-        template_id: shiftData.template_id,
-        user_id: shiftData.user_id,
-        start_time: shiftData.start_time,
-        end_time: shiftData.end_time,
-        note: shiftData.note
-    };
-
-    if (shiftData.id) {
-      // Update
-      const { error } = await supabase
-        .from('shifts')
-        .update(payload)
-        .eq('id', shiftData.id);
-      
-      if (!error) fetchData();
-    } else {
-      // Create
-      const { error } = await supabase
-        .from('shifts')
-        .insert([{
-          date: shiftData.date,
+    try {
+      const payload = {
+          template_id: shiftData.template_id || null,
           user_id: shiftData.user_id,
-          template_id: shiftData.template_id,
           start_time: shiftData.start_time,
           end_time: shiftData.end_time,
-          note: shiftData.note,
-          status: 'draft' // Default to draft
-        }]);
+          note: shiftData.note
+      };
 
-      if (!error) fetchData();
+      let error = null;
+
+      if (shiftData.id) {
+        // Update
+        const result = await supabase
+          .from('shifts')
+          .update(payload)
+          .eq('id', shiftData.id);
+        error = result.error;
+      } else {
+        // Create
+        const result = await supabase
+          .from('shifts')
+          .insert([{
+            date: shiftData.date,
+            user_id: shiftData.user_id,
+            template_id: shiftData.template_id || null,
+            start_time: shiftData.start_time,
+            end_time: shiftData.end_time,
+            note: shiftData.note,
+            status: 'draft' // Default to draft
+          }]);
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('Error saving shift:', error);
+        alert(`Failed to save shift: ${error.message}`);
+        throw error;
+      } else {
+        fetchData();
+      }
+    } catch (e) {
+      console.error('Unexpected error saving shift:', e);
+      alert('An unexpected error occurred while saving the shift.');
+      throw e;
     }
   };
 

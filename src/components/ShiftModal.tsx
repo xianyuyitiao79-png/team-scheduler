@@ -4,7 +4,7 @@ import { ShiftTemplate, Shift, Profile } from '../types';
 interface ShiftModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (shift: Partial<Shift>) => void;
+  onSave: (shift: Partial<Shift>) => Promise<void> | void;
   onDelete: (id: string) => void;
   templates: ShiftTemplate[];
   profiles: Profile[];
@@ -28,6 +28,7 @@ export default function ShiftModal({
   const [currentUserId, setCurrentUserId] = useState(userId);
   const [note, setNote] = useState('');
   const [historyTimes, setHistoryTimes] = useState<{start: string, end: string}[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Load history from localStorage
@@ -180,9 +181,10 @@ export default function ShiftModal({
           <div className="flex gap-2 pt-4">
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800"
+              disabled={isSaving}
+              className="flex-1 px-4 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save
+              {isSaving ? 'Saving...' : 'Save'}
             </button>
             {initialShift && (
               <button
