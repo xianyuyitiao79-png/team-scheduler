@@ -10,9 +10,39 @@ import {
 import { useAuth } from '../features/auth/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Profile, Shift, ShiftTemplate } from '../types';
-import { ChevronLeft, ChevronRight, Download, Share } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Share, Plus } from 'lucide-react';
 import ShiftModal from '../components/ShiftModal';
 import html2canvas from 'html2canvas';
+
+// Helper to get consistent color for a name
+const getColorForName = (name: string) => {
+  const colors = [
+    'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
+    'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200',
+    'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200',
+    'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200',
+    'bg-lime-100 text-lime-800 border-lime-200 hover:bg-lime-200',
+    'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
+    'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200',
+    'bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200',
+    'bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200',
+    'bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-200',
+    'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
+    'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200',
+    'bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200',
+    'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200',
+    'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 hover:bg-fuchsia-200',
+    'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200',
+    'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200',
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  return colors[Math.abs(hash) % colors.length];
+};
 
 export default function Schedule() {
   const { profile } = useAuth();
@@ -254,10 +284,10 @@ export default function Schedule() {
           </div>
 
           {/* Time Rows */}
-          {timeSlots.map(timeStr => (
-            <div key={timeStr} className="grid grid-cols-8 border-b border-zinc-200 last:border-0 hover:bg-zinc-50 transition-colors">
+          {timeSlots.map((timeStr, index) => (
+            <div key={timeStr} className={`grid grid-cols-8 border-b border-zinc-200 last:border-0 hover:bg-zinc-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-zinc-50/30'}`}>
               {/* Time Label */}
-              <div className="p-4 text-sm font-medium text-zinc-500 border-r border-zinc-200 flex items-center justify-center bg-zinc-50/50">
+              <div className="p-4 text-xs font-medium text-zinc-400 border-r border-zinc-200 flex items-center justify-center">
                 {timeStr}
               </div>
 
@@ -270,28 +300,31 @@ export default function Schedule() {
                 return (
                   <div 
                     key={`${dateStr}-${timeStr}`} 
-                    className={`p-2 border-r border-zinc-200 last:border-0 min-h-[60px] relative group transition-colors ${
-                      hasShifts ? 'bg-blue-50/30' : ''
-                    } ${isAdmin ? 'cursor-pointer hover:bg-zinc-100' : ''}`}
+                    className={`p-1 border-r border-zinc-200 last:border-0 min-h-[70px] relative group transition-all ${
+                      isAdmin ? 'cursor-pointer hover:bg-zinc-100/80' : ''
+                    }`}
                     onClick={() => {
                       if (isAdmin) {
                         setSelectedDate(dateStr);
                         setSelectedUserId(''); // No user pre-selected for time slot
                         setSelectedShift(undefined);
-                        // Pre-fill time based on slot?
                         setModalOpen(true);
                       }
                     }}
                   >
                     {!hasShifts ? (
-                       <div className="h-full w-full flex items-center justify-center">
-                         <span className="text-xs text-zinc-300 font-medium">Open</span>
+                       <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="flex flex-col items-center text-zinc-400">
+                            <Plus size={16} />
+                            <span className="text-[10px] font-medium">Add</span>
+                         </div>
                        </div>
                     ) : (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5 content-start h-full p-1">
                         {cellShifts.map(shift => {
                           const user = profiles.find(p => p.id === shift.user_id);
                           const userName = user?.name || 'Unknown';
+                          const colorClass = getColorForName(userName);
                           
                           return (
                             <div
@@ -305,14 +338,12 @@ export default function Schedule() {
                                   setModalOpen(true);
                                 }
                               }}
-                              className={`px-2 py-1 rounded text-xs border shadow-sm cursor-pointer hover:scale-105 transition-transform ${
-                                shift.status === 'published' 
-                                  ? 'bg-blue-100 border-blue-200 text-blue-800' 
-                                  : 'bg-amber-100 border-amber-200 text-amber-800'
+                              className={`px-2 py-1 rounded-md text-xs border shadow-sm cursor-pointer transition-all hover:shadow-md ${colorClass} ${
+                                shift.status === 'draft' ? 'opacity-80 border-dashed' : ''
                               }`}
                               title={`${userName}: ${shift.start_time?.slice(0,5)} - ${shift.end_time?.slice(0,5)}`}
                             >
-                              <span className="font-bold">{userName}</span>
+                              <span className="font-semibold">{userName}</span>
                             </div>
                           );
                         })}
