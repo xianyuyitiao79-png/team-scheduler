@@ -89,11 +89,13 @@ export default function Dashboard() {
                 {format(parseISO(nextShift.date), 'EEEE, MMM d')}
               </div>
               <div className="text-xl text-zinc-600">
-                {nextShift.shift_templates?.start_time?.slice(0, 5)} - {nextShift.shift_templates?.end_time?.slice(0, 5)}
+                {(nextShift.start_time || nextShift.shift_templates?.start_time)?.slice(0, 5)} - {(nextShift.end_time || nextShift.shift_templates?.end_time)?.slice(0, 5)}
               </div>
-              <div className="inline-block px-2 py-1 bg-zinc-100 text-zinc-600 text-sm rounded">
-                {nextShift.shift_templates?.name}
-              </div>
+              {nextShift.shift_templates?.name && (
+                <div className="inline-block px-2 py-1 bg-zinc-100 text-zinc-600 text-sm rounded">
+                  {nextShift.shift_templates.name}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-zinc-500 py-4">

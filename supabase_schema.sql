@@ -33,8 +33,8 @@ create table public.shifts (
   date date not null,
   template_id uuid references public.shift_templates(id),
   user_id uuid references public.profiles(id) on delete cascade not null,
-  start_time time,
-  end_time time,
+  start_time text,
+  end_time text,
   status text not null check (status in ('draft', 'published')) default 'draft',
   note text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
