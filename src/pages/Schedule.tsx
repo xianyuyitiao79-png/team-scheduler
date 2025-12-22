@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -10,8 +10,10 @@ import {
 import { useAuth } from '../features/auth/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Profile, Shift, ShiftTemplate } from '../types';
-import { ChevronLeft, ChevronRight, Download, Share, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Share, AlertCircle, LayoutList } from 'lucide-react';
 import ShiftModal from '../components/ShiftModal';
+import OpenShiftsPanel from '../components/OpenShiftsPanel';
+import { computeOpenShifts, ShiftTemplateInput, ScheduledShiftInput } from '../lib/computeOpenShifts';
 import html2canvas from 'html2canvas';
 
 export default function Schedule() {
@@ -22,6 +24,7 @@ export default function Schedule() {
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlyMyShifts, setOnlyMyShifts] = useState(false);
+  const [showOpenShifts, setShowOpenShifts] = useState(false);
   
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -37,6 +40,50 @@ export default function Schedule() {
   });
 
   const isAdmin = profile?.role === 'admin';
+
+  const openShifts = useMemo(() => {
+    if (loading || !templates.length) return [];
+
+    const shiftInputs: ScheduledShiftInput[] = shifts.map(s => {
+      // Determine start and end times strings (HH:mm or HH:mm:ss)
+      let sTime = s.start_time || s.shift_templates?.start_time || '00:00';
+      let eTime = s.end_time || s.shift_templates?.end_time || '00:00';
+      
+      // Ensure we have HH:mm format at least
+      if (sTime.length > 5) sTime = sTime.slice(0, 5);
+      if (eTime.length > 5) eTime = eTime.slice(0, 5);
+
+      // Parse dates
+      // s.date is YYYY-MM-DD
+      const startDateTime = new Date(`${s.date}T${sTime}:00`);
+      const endDateTime = new Date(`${s.date}T${eTime}:00`);
+      
+      // Handle case where end time is smaller than start time (overnight)
+      // If needed. But user said "daily", assuming shifts are within day or handled simply.
+      
+      return {
+        id: s.id,
+        userId: s.user_id,
+        date: s.date,
+        startDateTime,
+        endDateTime
+      };
+    });
+
+    const templateInputs: ShiftTemplateInput[] = templates.map(t => ({
+      id: t.id,
+      name: t.name,
+      startTime: t.start_time.slice(0, 5),
+      endTime: t.end_time.slice(0, 5),
+      appliesToDays: [0, 1, 2, 3, 4, 5, 6],
+      active: true
+    }));
+
+    const weekStart = currentWeekStart;
+    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+
+    return computeOpenShifts(templateInputs, shiftInputs, { start: weekStart, end: weekEnd });
+  }, [shifts, templates, currentWeekStart, loading]);
 
   useEffect(() => {
     fetchData();
@@ -183,6 +230,18 @@ export default function Schedule() {
           >
             {onlyMyShifts ? 'Show All' : 'My Shifts'}
           </button>
+
+          <button
+            onClick={() => setShowOpenShifts(!showOpenShifts)}
+            className={`px-3 py-2 text-sm font-medium rounded-md border flex items-center ${
+              showOpenShifts 
+                ? 'bg-amber-100 text-amber-900 border-amber-300' 
+                : 'bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50'
+            }`}
+          >
+            <LayoutList size={16} className="mr-2" />
+            Open Shifts
+          </button>
         </div>
 
         {isAdmin && (
@@ -304,6 +363,12 @@ export default function Schedule() {
         initialShift={selectedShift}
         date={selectedDate}
         userId={selectedUserId}
+      />
+      
+      <OpenShiftsPanel
+        isOpen={showOpenShifts}
+        onClose={() => setShowOpenShifts(false)}
+        openShifts={openShifts}
       />
     </div>
   );
