@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.1.18",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.0",
     "html2canvas": "^1.4.1",
