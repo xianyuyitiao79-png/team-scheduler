@@ -436,7 +436,7 @@ export default function Schedule() {
                                 }
                               }}
                               className={`px-2 py-1 rounded-md text-xs border shadow-sm transition-all hover:shadow-md ${colorClass} ${
-                                shift.status === 'draft' ? 'opacity-80 border-dashed' : ''
+                                shift.status === 'draft' ? 'opacity-90 border-2 border-dashed' : ''
                               } ${
                                 (isAdmin || shift.user_id === profile?.id) ? 'cursor-pointer' : 'cursor-default'
                               }`}
