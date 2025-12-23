@@ -43,14 +43,20 @@ export default function Dashboard() {
       const twoWeeksLaterStr = format(twoWeeksLater, 'yyyy-MM-dd');
 
       // 1. Fetch Upcoming Shifts (Next 7 Days)
-      const { data: shiftData } = await supabase
+      let query = supabase
         .from('shifts')
         .select('*, shift_templates(*)')
         .eq('user_id', profile.id)
         .gte('date', todayStr)
-        .lte('date', nextWeekStr)
-        .eq('status', 'published')
-        .order('date', { ascending: true });
+        .lte('date', nextWeekStr);
+
+      // Only filter by published status if not admin
+      // Admins should see their own draft shifts too
+      if (profile.role !== 'admin') {
+        query = query.eq('status', 'published');
+      }
+
+      const { data: shiftData } = await query.order('date', { ascending: true });
 
       if (shiftData) {
         setUpcomingShifts(shiftData as unknown as Shift[]);
