@@ -23,7 +23,15 @@ export default function Members() {
       .select('*')
       .order('name');
     
-    if (profilesData) setProfiles(profilesData as Profile[]);
+    if (profilesData) {
+      const openProfile: Profile = {
+        id: 'open_shifts',
+        name: 'Open Shifts',
+        role: 'member',
+        active: true
+      };
+      setProfiles([openProfile, ...(profilesData as Profile[])]);
+    }
 
     // Fetch Shifts for Selected Week to calculate totals
     const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
