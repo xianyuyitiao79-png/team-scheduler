@@ -9,6 +9,7 @@ export default function Members() {
   const [memberHours, setMemberHours] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [hasDuplicates, setHasDuplicates] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -47,8 +48,31 @@ export default function Members() {
 
     if (shiftsData) {
       const hoursMap: Record<string, number> = {};
+      const seen = new Set<string>();
+      const uniqueShifts: Shift[] = [];
+      let duplicatesCount = 0;
       
+      // Deduplicate in memory first
       (shiftsData as unknown as Shift[]).forEach(shift => {
+        const startTime = shift.start_time || shift.shift_templates?.start_time;
+        const endTime = shift.end_time || shift.shift_templates?.end_time;
+        // Use a key that defines "uniqueness" for a shift slot
+        const key = `${shift.user_id}|${shift.date}|${startTime}|${endTime}`;
+        
+        if (seen.has(key)) {
+          duplicatesCount++;
+        } else {
+          seen.add(key);
+          uniqueShifts.push(shift);
+        }
+      });
+
+      setHasDuplicates(duplicatesCount > 0);
+      if (duplicatesCount > 0) {
+        console.log(`Found ${duplicatesCount} duplicates during calculation. Using unique shifts only.`);
+      }
+
+      uniqueShifts.forEach(shift => {
         const userId = shift.user_id;
         if (!userId) return;
 
@@ -70,6 +94,7 @@ export default function Members() {
           
           const hours = duration / 60;
           
+          // console.log(`Debug: ${userId} +${hours}h on ${shift.date}`);
           hoursMap[userId] = (hoursMap[userId] || 0) + hours;
         }
       });
@@ -111,6 +136,62 @@ export default function Members() {
     }
   };
 
+  const fixDuplicates = async () => {
+    if (!confirm('This will check for and remove duplicate shifts (same user, date, time). Continue?')) return;
+    setLoading(true);
+    
+    try {
+      // Fetch all shifts for the current view or all time? 
+      // Safer to just do current week first, but duplicates might exist elsewhere.
+      // Let's do all shifts to be thorough, but maybe just current week to be safe and fast.
+      // The user complained about the displayed numbers, so current week is the priority.
+      const start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const end = endOfWeek(currentDate, { weekStartsOn: 1 });
+      const startStr = format(start, 'yyyy-MM-dd');
+      const endStr = format(end, 'yyyy-MM-dd');
+
+      const { data: shifts, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .gte('date', startStr)
+        .lte('date', endStr);
+
+      if (error) throw error;
+      if (!shifts) return;
+
+      const seen = new Set<string>();
+      const duplicates: string[] = [];
+
+      shifts.forEach((shift: any) => {
+        // Unique key based on content
+        const key = `${shift.user_id}|${shift.date}|${shift.template_id}|${shift.start_time}|${shift.end_time}`;
+        if (seen.has(key)) {
+          duplicates.push(shift.id);
+        } else {
+          seen.add(key);
+        }
+      });
+
+      if (duplicates.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('shifts')
+          .delete()
+          .in('id', duplicates);
+          
+        if (deleteError) throw deleteError;
+        alert(`Removed ${duplicates.length} duplicate shifts.`);
+        fetchData();
+      } else {
+        alert('No duplicates found in this week.');
+      }
+    } catch (err: any) {
+      console.error('Error fixing duplicates:', err);
+      alert('Error: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) return <div>Loading members...</div>;
 
   return (
@@ -138,6 +219,16 @@ export default function Members() {
               <ChevronRight size={16} />
             </button>
           </div>
+          <button 
+            onClick={fixDuplicates}
+            className={`px-3 py-2 border rounded-md text-sm font-medium shadow-sm ${
+              hasDuplicates 
+                ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100 animate-pulse' 
+                : 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-50'
+            }`}
+          >
+            {hasDuplicates ? 'Fix Duplicates (!)' : 'Check Duplicates'}
+          </button>
           <button 
             onClick={fetchData} 
             className="flex items-center px-3 py-2 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50 shadow-sm"
